@@ -1,0 +1,221 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+//录入时间的结构体
+typedef struct
+{
+    int Year;
+    int Month;
+    int Day;
+    int Hour;
+    int Minte;
+    int Seconds;
+}Enroll_Time;
+
+//学员信息结构体：
+typedef struct stu
+{
+    char Name[20];  //姓名
+    int  Num;       //学号
+    int  Age;       //年龄
+    char Sex;       //性别
+    float Score;    //成绩
+    Enroll_Time t;  //注册时间
+    
+    struct stu *pNext;   //下一个节点的地址
+}STU;
+
+
+
+//链表的结构体   相当与链表的管理器：负责记录头指针和节点数量
+typedef struct
+{
+    STU *Addr;   //链表的地址
+    int size;    //链表的节点个数
+}LinkList;
+
+//单链表、头插法、保存到STU.csv中，读取时直接读STU.csv
+
+//功能函数：新节点初始化
+//返回：新节点指针
+STU *new_node(const char* name,int num,int age,char sex,float score,Enroll_Time et)
+{
+	//1.申请堆区空间
+	STU *p = (STU *)malloc(sizeof(STU));  
+	strcpy(p->Name,name);
+	p->Num  = num;
+	p->Age   = age;
+	p->Sex    = sex;
+	p->Score = score;
+	p->t         = et;
+	p->pNext = NULL;            //新节点默认不指向任何地方   
+
+	return p;     
+}
+
+//功能函数：头插法插入节点，也就是将新节点插入到链表最前端
+//注：node在上一个功能函数创建完成了，所以只需要链接
+void add_head(LinkList *list,STU *node)
+{
+	node->pNext = list->Addr;      //新节点指向原链表的头节点
+	list->Addr     = node;               //头节点偏移给新节点
+	list->size++;
+}
+
+//将数据保存到STU.csv中
+//格式：姓名,学号,年龄,性别,成绩,年,月,日,时,分,秒
+//fprintf(fp,"%s\n",p->name);
+void save_to_csv(const LinkList *list)
+{
+	//以写的形式打开文件，若不存在则创建，存在则清空
+	FILE *fp = fopen("/home/edu118/桌面/02-标准IO/STU.csv","w");
+	if(!fp)
+	{
+		perror("save_to_csv fopen()");
+		return;
+	}
+
+	STU *p = list->Addr;
+	while(p)
+	{
+		//一行字符串对应一个学员 用 逗号 分隔
+		fprintf(fp,"%s,%d,%d,%c,%.1f,%d,%d,%d,%d,%d,%d\n",
+					p->Name,p->Num,p->Age,p->Sex,p->Score,
+					p->t.Year,p->t.Month,p->t.Day,p->t.Hour,p->t.Minte,p->t.Seconds);
+		p = p->pNext;
+	}
+	fclose(fp);  //全部导出之后关闭文件
+	printf(">>>已保存 %d 条记录到 STU.csv 中\n",list->size);
+}
+
+//将文件中数据读取到链表中 
+//1.释放旧链表
+//2.采用头插法，按照读入顺序和实际顺序相反
+//3.使用fscanf(fp,"%s\n",name);
+void load_from_csv(LinkList *list)
+{
+	FILE *fp = fopen("STU.csv","r");
+	if(!fp)
+	{
+		perror("load_from_csv fopen()");
+		return;
+	}
+
+	//变量准备
+	char name[20];
+	int num,age;
+	char sex;
+	float score;
+	Enroll_Time et;
+
+	//清空旧链表
+	STU *p = list->Addr,*tmp;
+	while(p)
+	{
+		tmp = p->pNext;
+		free(p);
+		p = tmp;
+	}
+	list->Addr = NULL;
+	list->size   = 0;
+
+	//逐行读入并头插  不使用strtok()
+	//  %[...]扫描集，表示 只读取方括号内出现的字符，遇到不在其中的字符就停止
+	//[^,] 开头加上取反表示 只要不是逗号，就继续读，遇到逗号立刻结束
+	//19是最大宽度限制，防止读爆缓冲区因为name[20]只申请了20字节的空间
+	//  %19[^,] :最多读取19个非逗号的字符，把他们放到数组name里
+	while(fscanf(fp,"%19[^,],%d,%d,%c,%f,%d,%d,%d,%d,%d,%d\n",
+							name,&num,&age,&sex,&score,
+							&et.Year,&et.Month,&et.Day,&et.Hour,&et.Minte,&et.Seconds) == 11)
+		add_head(list,new_node(name,num,age,sex,score,et));
+
+	fclose(fp);
+	printf(">>>已从 STU.csv 载入 %d 条记录\n",list->size);
+}
+
+//功能函数：将文件中的数据打印到终端上
+void print_list(const LinkList *list)
+{
+		if(list->size == 0)
+		{
+			puts(">>> 当前没有学员记录");
+			return ;
+		}
+		puts("\n学号\t\t姓名\t年龄\t性别\t成绩\t注册时间");
+		puts("________________________________________________");
+		const STU*p = list->Addr;
+		while(p)
+		{
+			printf("%d\t%s\t%d\t%c\t%.1f\t-%02d-%02d-%02d %02d:%02d:%02d\n",
+			p->Num,p->Name,p->Age,p->Sex,p->Score,
+					p->t.Year,p->t.Month,p->t.Day,p->t.Hour,p->t.Minte,p->t.Seconds);
+
+			p = p->pNext;
+		}
+}
+
+int menu()
+{
+	int c;
+	puts("\n=====学员管理系统=====");
+	puts("1.添加学员");
+	puts("2.保存到文件");
+	puts("3.从文件读取");
+	puts("4.显示所有信息");
+	puts("5.退出");
+	printf("请选择:>");
+	scanf("%d",&c);
+	return c;
+}
+
+int main(void)
+{
+	LinkList list = {NULL,0};
+	int choice;
+
+	//尝试载入
+	load_from_csv(&list);
+
+	//主循环
+	while((choice = menu())!=0)
+	{
+		if(choice == 1)
+		{
+			char name[20];
+			char sex;
+			int num,age;
+			float score;
+			Enroll_Time et;
+
+			printf("姓名 学号 年龄 性别 成绩:");
+			scanf("%s %d %d %c %f",name,&num,&age,&sex,&score);
+
+			printf("注册时间(年月日时分秒):");
+			scanf("%d %d %d %d %d %d",&et.Year,&et.Month,&et.Day,&et.Hour,&et.Minte,&et.Seconds);
+
+			add_head(&list,new_node(name,num,age,sex,score,et));
+		}
+		else if(choice == 2)
+		{
+			save_to_csv(&list);
+		}
+		else if(choice == 3)
+		{
+			load_from_csv(&list);
+			print_list(&list);
+		}
+		else if(choice == 4)
+		{
+			print_list(&list);
+		}
+	}
+		
+	STU *p = list.Addr,*tmp;
+	while(p)
+	{
+		tmp = p->pNext;
+		free(p);
+		p = tmp;
+	}
+}
