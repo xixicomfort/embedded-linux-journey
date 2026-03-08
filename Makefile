@@ -1,16 +1,23 @@
-SRC=$(wildcard *.c)
-OBJ=$(SRC:%.c=%.o)
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -g
 
-main:$(OBJ)
-	gcc $^ -l sqlite3 -o $@
+SRC = $(wildcard *.c)
+OBJ = $(SRC:.c=.o)
+TARGET = main
 
-.Phony : clean
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) $^ -o $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.Phony: clean
 clean:
-		@rm *.o
-		@echo Clean All Objects
+	rm -f *.o $(TARGET)
+	@echo "Clean All Objects and executable"
 
-.Phony : print
+.PHONY: print
 print:
-		@echo SRC=$(SRC)
-		@echo OBJ=$(OBJ)
+	@echo "SRC = $(SRC)"
+	@echo "OBJ = $(OBJ)"
 
