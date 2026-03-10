@@ -4,6 +4,7 @@
 - Epoll ET + Lock-Free Ring Buffer（std：：atomic + memory_order）
 - UDP组播实时接收行情 + 多线程消费
 - 零锁、零GC、单机十万QPS
+- 已支持无锁队列生产消费分离
 
 ## 编译运行
 ```bash
